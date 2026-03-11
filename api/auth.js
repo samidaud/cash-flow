@@ -1,7 +1,7 @@
 export default async function handler(req, res) {
     const AZURE_CONFIG = {
         clientId: '0c0385dd-8b7e-4a9d-ad89-403082b8f8ce',
-        tenantId: '2ae6a277-ff2a-4953-a345-df5216689f42',
+        tenantId: '2ae6a277-f72a-4953-a345-df52166894f2',
         clientSecret: 'QBm8Q-VqAM2nqw62vfi1sQ350Wug53hxxpNzycyV',
         redirectUri: 'https://cash-flow-sigma-teal.vercel.app/api/auth'
     };
