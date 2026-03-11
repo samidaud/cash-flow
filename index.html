@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -17,256 +16,265 @@
 <body>
     <div id="root"></div>
 
-```
-<script>
-    const { useState, useEffect } = React;
+    <script>
+        const { useState, useEffect } = React;
 
-    function CashFlowDashboard() {
-        const [data, setData] = useState(null);
-        const [loading, setLoading] = useState(true);
-        const [error, setError] = useState(null);
-        const [lastUpdate, setLastUpdate] = useState(null);
-        const [isAuthenticated, setIsAuthenticated] = useState(false);
+        function CashFlowDashboard() {
+            const [data, setData] = useState(null);
+            const [loading, setLoading] = useState(true);
+            const [error, setError] = useState(null);
+            const [lastUpdate, setLastUpdate] = useState(null);
+            const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-        const lineItems = [
-            { row: 9, label: 'TOTAL REVENUE', bold: true },
-            { row: 14, label: 'TOTAL COGS', bold: true },
-            { row: 15, label: 'GROSS PROFIT', bold: true },
-            { row: 16, label: 'Gross Profit Margin %', bold: false, percent: true },
-            { row: 25, label: 'TOTAL LABOR COSTS', bold: true },
-            { row: 26, label: 'Labor Cost % of Revenue', bold: false, percent: true },
-            { row: 34, label: 'TOTAL OCCUPANCY', bold: true },
-            { row: 42, label: 'TOTAL UTILITIES', bold: true },
-            { row: 50, label: 'TOTAL MARKETING', bold: true },
-            { row: 58, label: 'TOTAL REPAIRS & MAINTENANCE', bold: true },
-            { row: 68, label: 'TOTAL TECH & G&A', bold: true },
-            { row: 71, label: 'EBITDA', bold: true },
-            { row: 73, label: 'NET CHANGE IN CASH', bold: true, highlight: true },
-            { row: 85, label: 'CLOSING CASH BALANCE', bold: true, highlight: true },
-        ];
+            const lineItems = [
+                { row: 9, label: 'TOTAL REVENUE', bold: true },
+                { row: 14, label: 'TOTAL COGS', bold: true },
+                { row: 15, label: 'GROSS PROFIT', bold: true },
+                { row: 16, label: 'Gross Profit Margin %', bold: false, percent: true },
+                { row: 25, label: 'TOTAL LABOR COSTS', bold: true },
+                { row: 26, label: 'Labor Cost % of Revenue', bold: false, percent: true },
+                { row: 34, label: 'TOTAL OCCUPANCY', bold: true },
+                { row: 42, label: 'TOTAL UTILITIES', bold: true },
+                { row: 50, label: 'TOTAL MARKETING', bold: true },
+                { row: 58, label: 'TOTAL REPAIRS & MAINTENANCE', bold: true },
+                { row: 68, label: 'TOTAL TECH & G&A', bold: true },
+                { row: 71, label: 'EBITDA', bold: true },
+                { row: 73, label: 'NET CHANGE IN CASH', bold: true, highlight: true },
+                { row: 85, label: 'CLOSING CASH BALANCE', bold: true, highlight: true },
+            ];
 
-        useEffect(() => {
-            // Check if we have a token in the URL
-            const params = new URLSearchParams(window.location.search);
-            const token = params.get('token');
-            
-            if (token) {
-                setIsAuthenticated(true);
-                localStorage.setItem('access_token', token);
-                // Remove token from URL for security
-                window.history.replaceState({}, document.title, window.location.pathname);
-                fetchExcelData(token);
-            } else {
-                const savedToken = localStorage.getItem('access_token');
-                if (savedToken) {
+            useEffect(() => {
+                const params = new URLSearchParams(window.location.search);
+                const token = params.get('token');
+                
+                if (token) {
+                    console.log('Token received from OAuth');
+                    localStorage.setItem('access_token', token);
+                    localStorage.setItem('token_timestamp', Date.now().toString());
                     setIsAuthenticated(true);
-                    fetchExcelData(savedToken);
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                    fetchExcelData(token);
                 } else {
-                    setIsAuthenticated(false);
+                    const savedToken = localStorage.getItem('access_token');
+                    const tokenTimestamp = localStorage.getItem('token_timestamp');
+                    
+                    if (savedToken && tokenTimestamp) {
+                        const tokenAge = Date.now() - parseInt(tokenTimestamp);
+                        const oneHour = 60 * 60 * 1000;
+                        
+                        if (tokenAge < oneHour) {
+                            console.log('Using saved token');
+                            setIsAuthenticated(true);
+                            fetchExcelData(savedToken);
+                        } else {
+                            console.log('Token expired');
+                            localStorage.removeItem('access_token');
+                            localStorage.removeItem('token_timestamp');
+                            setIsAuthenticated(false);
+                            setLoading(false);
+                        }
+                    } else {
+                        setIsAuthenticated(false);
+                        setLoading(false);
+                    }
+                }
+            }, []);
+
+            const fetchExcelData = async (token) => {
+                try {
+                    setLoading(true);
+                    const mockData = getMockData();
+                    setData(mockData);
+                    setLastUpdate(new Date().toLocaleTimeString());
+                    setError(null);
+                } catch (err) {
+                    setError('Failed to fetch data: ' + err.message);
+                    console.error(err);
+                } finally {
                     setLoading(false);
                 }
-            }
-        }, []);
+            };
 
-        const fetchExcelData = async (token) => {
-            try {
-                setLoading(true);
-                // For now, show mock data
-                // In future, fetch real data from OneDrive using Microsoft Graph
-                const mockData = getMockData();
-                setData(mockData);
-                setLastUpdate(new Date().toLocaleTimeString());
-                setError(null);
-            } catch (err) {
-                setError('Failed to fetch data: ' + err.message);
-                console.error(err);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        const getMockData = () => ({
-            lastWeek: {
-                headers: ['YODMM', 'YOSTD', 'PXSTD', 'CULINARY', 'TOTAL'],
-                data: {
-                    9: [146413, 0, 11084, 0, 157497],
-                    14: [40070, 0, 0, 3514, 43584],
-                    15: [106343, 0, 11084, -3514, 113913],
-                    16: [0.726, 0, 1.0, -1.0, 0.723],
-                    25: [53132, 3275, 4250, 4850, 65507],
-                    26: [0.363, 0, 0.383, 0, 0.416],
-                    34: [0, 0, 0, 0, 0],
-                    42: [0, 0, 0, 0, 0],
-                    50: [0, 0, 0, 0, 0],
-                    58: [0, 0, 0, 0, 0],
-                    68: [0, 0, 0, 0, 0],
-                    71: [53211, -3275, 6834, -8364, 48406],
-                    73: [53211, -3275, 6834, -8364, 48406],
-                    85: [53211, -3275, 6834, -8364, 48406],
+            const getMockData = () => ({
+                lastWeek: {
+                    headers: ['YODMM', 'YOSTD', 'PXSTD', 'CULINARY', 'TOTAL'],
+                    data: {
+                        9: [146413, 0, 11084, 0, 157497],
+                        14: [40070, 0, 0, 3514, 43584],
+                        15: [106343, 0, 11084, -3514, 113913],
+                        16: [0.726, 0, 1.0, -1.0, 0.723],
+                        25: [53132, 3275, 4250, 4850, 65507],
+                        26: [0.363, 0, 0.383, 0, 0.416],
+                        34: [0, 0, 0, 0, 0],
+                        42: [0, 0, 0, 0, 0],
+                        50: [0, 0, 0, 0, 0],
+                        58: [0, 0, 0, 0, 0],
+                        68: [0, 0, 0, 0, 0],
+                        71: [53211, -3275, 6834, -8364, 48406],
+                        73: [53211, -3275, 6834, -8364, 48406],
+                        85: [53211, -3275, 6834, -8364, 48406],
+                    }
+                },
+                currentWeek: {
+                    headers: ['YODMM', 'YOSTD', 'PXSTD', 'CULINARY', 'TOTAL'],
+                    data: {
+                        9: [159761, 0, 0, 0, 159761],
+                        14: [15476, 10000, 0, 0, 25476],
+                        15: [144285, -10000, 0, 0, 134285],
+                        16: [0.904, 0, 0, 0, 0.840],
+                        25: [0, 0, 0, 0, 0],
+                        26: [0, 0, 0, 0, 0],
+                        34: [0, 0, 0, 0, 0],
+                        42: [0, 0, 0, 0, 0],
+                        50: [0, 0, 0, 0, 0],
+                        58: [0, 0, 0, 0, 0],
+                        68: [0, 0, 0, 0, 0],
+                        71: [144285, -10000, 0, 0, 134285],
+                        73: [144285, -10000, 0, 0, 134285],
+                        85: [144285, -10000, 0, 0, 134285],
+                    }
                 }
-            },
-            currentWeek: {
-                headers: ['YODMM', 'YOSTD', 'PXSTD', 'CULINARY', 'TOTAL'],
-                data: {
-                    9: [159761, 0, 0, 0, 159761],
-                    14: [15476, 10000, 0, 0, 25476],
-                    15: [144285, -10000, 0, 0, 134285],
-                    16: [0.904, 0, 0, 0, 0.840],
-                    25: [0, 0, 0, 0, 0],
-                    26: [0, 0, 0, 0, 0],
-                    34: [0, 0, 0, 0, 0],
-                    42: [0, 0, 0, 0, 0],
-                    50: [0, 0, 0, 0, 0],
-                    58: [0, 0, 0, 0, 0],
-                    68: [0, 0, 0, 0, 0],
-                    71: [144285, -10000, 0, 0, 134285],
-                    73: [144285, -10000, 0, 0, 134285],
-                    85: [144285, -10000, 0, 0, 134285],
-                }
+            });
+
+            const handleLogin = () => {
+                window.location.href = '/api/auth';
+            };
+
+            const handleLogout = () => {
+                localStorage.removeItem('access_token');
+                localStorage.removeItem('token_timestamp');
+                setIsAuthenticated(false);
+                setData(null);
+            };
+
+            const formatNumber = (value, percent = false) => {
+                if (value === null || value === undefined) return '—';
+                if (percent) return (value * 100).toFixed(1) + '%';
+                return new Intl.NumberFormat('en-US', {
+                    style: 'currency',
+                    currency: 'AED',
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 0,
+                }).format(value);
+            };
+
+            if (!isAuthenticated) {
+                return React.createElement('div', { className: 'min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4' },
+                    React.createElement('div', { className: 'bg-white rounded-lg shadow-xl p-8 max-w-md w-full' },
+                        React.createElement('h1', { className: 'text-3xl font-bold text-slate-900 mb-2' }, 'Cash Flow Dashboard'),
+                        React.createElement('p', { className: 'text-slate-600 mb-6' }, 'View your live restaurant cash flow data'),
+                        React.createElement('button', {
+                            onClick: handleLogin,
+                            className: 'w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition-colors mb-4'
+                        }, 'Sign in with Microsoft'),
+                        React.createElement('p', { className: 'text-xs text-slate-500 text-center' },
+                            'You\'ll be redirected to Microsoft to authorize access to your OneDrive files.'
+                        )
+                    )
+                );
             }
-        });
 
-        const handleLogin = () => {
-            // Redirect to API auth endpoint
-            window.location.href = '/api/auth';
-        };
-
-        const handleLogout = () => {
-            localStorage.removeItem('access_token');
-            setIsAuthenticated(false);
-            setData(null);
-        };
-
-        const formatNumber = (value, percent = false) => {
-            if (value === null || value === undefined) return '—';
-            if (percent) return (value * 100).toFixed(1) + '%';
-            return new Intl.NumberFormat('en-US', {
-                style: 'currency',
-                currency: 'AED',
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 0,
-            }).format(value);
-        };
-
-        if (!isAuthenticated) {
-            return React.createElement('div', { className: 'min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4' },
-                React.createElement('div', { className: 'bg-white rounded-lg shadow-xl p-8 max-w-md w-full' },
-                    React.createElement('h1', { className: 'text-3xl font-bold text-slate-900 mb-2' }, 'Cash Flow Dashboard'),
-                    React.createElement('p', { className: 'text-slate-600 mb-6' }, 'View your live restaurant cash flow data'),
-                    React.createElement('button', {
-                        onClick: handleLogin,
-                        className: 'w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition-colors mb-4'
-                    }, 'Sign in with Microsoft'),
-                    React.createElement('p', { className: 'text-xs text-slate-500 text-center' },
-                        'You\'ll be redirected to Microsoft to authorize access to your OneDrive files.'
+            if (loading) {
+                return React.createElement('div', { className: 'min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center' },
+                    React.createElement('div', { className: 'text-center' },
+                        React.createElement('div', { className: 'w-8 h-8 text-blue-400 animate-spin mx-auto mb-4 inline-block border-4 border-blue-400 border-t-transparent rounded-full' }),
+                        React.createElement('p', { className: 'text-white' }, 'Loading cash flow data...')
                     )
-                )
-            );
-        }
+                );
+            }
 
-        if (loading) {
-            return React.createElement('div', { className: 'min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center' },
-                React.createElement('div', { className: 'text-center' },
-                    React.createElement('div', { className: 'w-8 h-8 text-blue-400 animate-spin mx-auto mb-4 inline-block border-4 border-blue-400 border-t-transparent rounded-full' }),
-                    React.createElement('p', { className: 'text-white' }, 'Loading cash flow data...')
-                )
-            );
-        }
-
-        return React.createElement('div', { className: 'min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4' },
-            React.createElement('div', { className: 'max-w-7xl mx-auto' },
-                React.createElement('div', { className: 'flex justify-between items-center mb-8' },
-                    React.createElement('div', null,
-                        React.createElement('h1', { className: 'text-4xl font-bold text-white mb-1' }, 'Cash Flow Dashboard'),
-                        React.createElement('p', { className: 'text-slate-400' }, 'Last updated: ' + lastUpdate)
-                    ),
-                    React.createElement('div', { className: 'flex gap-3' },
-                        React.createElement('button', {
-                            onClick: () => fetchExcelData(localStorage.getItem('access_token')),
-                            className: 'bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg'
-                        }, '⟳ Refresh'),
-                        React.createElement('button', {
-                            onClick: handleLogout,
-                            className: 'bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg'
-                        }, '→ Logout')
-                    )
-                ),
-
-                error && React.createElement('div', { className: 'bg-red-900/50 border border-red-500 rounded-lg p-4 mb-6 text-red-200' }, error),
-
-                data && React.createElement('div', { className: 'grid grid-cols-1 lg:grid-cols-2 gap-6' },
-                    React.createElement('div', { className: 'bg-white rounded-lg shadow-xl overflow-hidden' },
-                        React.createElement('div', { className: 'bg-teal-700 px-6 py-4' },
-                            React.createElement('h2', { className: 'text-2xl font-bold text-white' }, 'TOTAL WEEK 1'),
-                            React.createElement('p', { className: 'text-teal-100 text-sm' }, 'Previous week completed')
+            return React.createElement('div', { className: 'min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4' },
+                React.createElement('div', { className: 'max-w-7xl mx-auto' },
+                    React.createElement('div', { className: 'flex justify-between items-center mb-8' },
+                        React.createElement('div', null,
+                            React.createElement('h1', { className: 'text-4xl font-bold text-white mb-1' }, 'Cash Flow Dashboard'),
+                            React.createElement('p', { className: 'text-slate-400' }, 'Last updated: ' + lastUpdate)
                         ),
-                        React.createElement('div', { className: 'overflow-x-auto' },
-                            React.createElement('table', { className: 'w-full text-sm' },
-                                React.createElement('thead', null,
-                                    React.createElement('tr', { className: 'bg-slate-100 border-b' },
-                                        React.createElement('th', { className: 'px-4 py-3 text-left font-semibold' }, 'Line Item'),
-                                        data.lastWeek.headers.map((h, i) =>
-                                            React.createElement('th', { key: i, className: 'px-3 py-3 text-right font-semibold text-xs' }, h)
-                                        )
-                                    )
-                                ),
-                                React.createElement('tbody', null,
-                                    lineItems.map((item) => {
-                                        const values = data.lastWeek.data[item.row] || [];
-                                        return React.createElement('tr', { key: item.row, className: `border-b hover:bg-slate-50 ${item.bold ? 'bg-slate-50 font-bold' : ''}` },
-                                            React.createElement('td', { className: 'px-4 py-3' }, item.label),
-                                            values.map((v, i) =>
-                                                React.createElement('td', { key: i, className: 'px-3 py-3 text-right text-xs' }, formatNumber(v, item.percent))
+                        React.createElement('div', { className: 'flex gap-3' },
+                            React.createElement('button', {
+                                onClick: () => fetchExcelData(localStorage.getItem('access_token')),
+                                className: 'bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg'
+                            }, '⟳ Refresh'),
+                            React.createElement('button', {
+                                onClick: handleLogout,
+                                className: 'bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg'
+                            }, '→ Logout')
+                        )
+                    ),
+
+                    error && React.createElement('div', { className: 'bg-red-900/50 border border-red-500 rounded-lg p-4 mb-6 text-red-200' }, error),
+
+                    data && React.createElement('div', { className: 'grid grid-cols-1 lg:grid-cols-2 gap-6' },
+                        React.createElement('div', { className: 'bg-white rounded-lg shadow-xl overflow-hidden' },
+                            React.createElement('div', { className: 'bg-teal-700 px-6 py-4' },
+                                React.createElement('h2', { className: 'text-2xl font-bold text-white' }, 'TOTAL WEEK 1'),
+                                React.createElement('p', { className: 'text-teal-100 text-sm' }, 'Previous week completed')
+                            ),
+                            React.createElement('div', { className: 'overflow-x-auto' },
+                                React.createElement('table', { className: 'w-full text-sm' },
+                                    React.createElement('thead', null,
+                                        React.createElement('tr', { className: 'bg-slate-100 border-b' },
+                                            React.createElement('th', { className: 'px-4 py-3 text-left font-semibold' }, 'Line Item'),
+                                            data.lastWeek.headers.map((h, i) =>
+                                                React.createElement('th', { key: i, className: 'px-3 py-3 text-right font-semibold text-xs' }, h)
                                             )
-                                        );
-                                    })
+                                        )
+                                    ),
+                                    React.createElement('tbody', null,
+                                        lineItems.map((item) => {
+                                            const values = data.lastWeek.data[item.row] || [];
+                                            return React.createElement('tr', { key: item.row, className: `border-b hover:bg-slate-50 ${item.bold ? 'bg-slate-50 font-bold' : ''}` },
+                                                React.createElement('td', { className: 'px-4 py-3' }, item.label),
+                                                values.map((v, i) =>
+                                                    React.createElement('td', { key: i, className: 'px-3 py-3 text-right text-xs' }, formatNumber(v, item.percent))
+                                                )
+                                            );
+                                        })
+                                    )
+                                )
+                            )
+                        ),
+
+                        React.createElement('div', { className: 'bg-white rounded-lg shadow-xl overflow-hidden' },
+                            React.createElement('div', { className: 'bg-blue-700 px-6 py-4' },
+                                React.createElement('h2', { className: 'text-2xl font-bold text-white' }, 'TOTAL WEEK 2'),
+                                React.createElement('p', { className: 'text-blue-100 text-sm' }, 'Current week in progress (updates daily)')
+                            ),
+                            React.createElement('div', { className: 'overflow-x-auto' },
+                                React.createElement('table', { className: 'w-full text-sm' },
+                                    React.createElement('thead', null,
+                                        React.createElement('tr', { className: 'bg-slate-100 border-b' },
+                                            React.createElement('th', { className: 'px-4 py-3 text-left font-semibold' }, 'Line Item'),
+                                            data.currentWeek.headers.map((h, i) =>
+                                                React.createElement('th', { key: i, className: 'px-3 py-3 text-right font-semibold text-xs' }, h)
+                                            )
+                                        )
+                                    ),
+                                    React.createElement('tbody', null,
+                                        lineItems.map((item) => {
+                                            const values = data.currentWeek.data[item.row] || [];
+                                            return React.createElement('tr', { key: item.row, className: `border-b hover:bg-slate-50 ${item.bold ? 'bg-slate-50 font-bold' : ''}` },
+                                                React.createElement('td', { className: 'px-4 py-3' }, item.label),
+                                                values.map((v, i) =>
+                                                    React.createElement('td', { key: i, className: 'px-3 py-3 text-right text-xs' }, formatNumber(v, item.percent))
+                                                )
+                                            );
+                                        })
+                                    )
                                 )
                             )
                         )
                     ),
 
-                    React.createElement('div', { className: 'bg-white rounded-lg shadow-xl overflow-hidden' },
-                        React.createElement('div', { className: 'bg-blue-700 px-6 py-4' },
-                            React.createElement('h2', { className: 'text-2xl font-bold text-white' }, 'TOTAL WEEK 2'),
-                            React.createElement('p', { className: 'text-blue-100 text-sm' }, 'Current week in progress (updates daily)')
-                        ),
-                        React.createElement('div', { className: 'overflow-x-auto' },
-                            React.createElement('table', { className: 'w-full text-sm' },
-                                React.createElement('thead', null,
-                                    React.createElement('tr', { className: 'bg-slate-100 border-b' },
-                                        React.createElement('th', { className: 'px-4 py-3 text-left font-semibold' }, 'Line Item'),
-                                        data.currentWeek.headers.map((h, i) =>
-                                            React.createElement('th', { key: i, className: 'px-3 py-3 text-right font-semibold text-xs' }, h)
-                                        )
-                                    )
-                                ),
-                                React.createElement('tbody', null,
-                                    lineItems.map((item) => {
-                                        const values = data.currentWeek.data[item.row] || [];
-                                        return React.createElement('tr', { key: item.row, className: `border-b hover:bg-slate-50 ${item.bold ? 'bg-slate-50 font-bold' : ''}` },
-                                            React.createElement('td', { className: 'px-4 py-3' }, item.label),
-                                            values.map((v, i) =>
-                                                React.createElement('td', { key: i, className: 'px-3 py-3 text-right text-xs' }, formatNumber(v, item.percent))
-                                            )
-                                        );
-                                    })
-                                )
-                            )
-                        )
+                    React.createElement('div', { className: 'mt-8 text-center text-slate-400 text-sm' },
+                        React.createElement('p', null, 'Data syncs automatically from your OneDrive Excel file')
                     )
-                ),
-
-                React.createElement('div', { className: 'mt-8 text-center text-slate-400 text-sm' },
-                    React.createElement('p', null, 'Data syncs automatically from your OneDrive Excel file')
                 )
-            )
-        );
-    }
+            );
+        }
 
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(React.createElement(CashFlowDashboard));
-</script>
-```
-
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(React.createElement(CashFlowDashboard));
+    </script>
 </body>
 </html>
