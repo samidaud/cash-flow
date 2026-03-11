@@ -107,9 +107,9 @@
                         account: account
                     });
 
-                    // First find the Cash-flow folder
-                    const folderSearchResponse = await fetch(
-                        `https://graph.microsoft.com/v1.0/me/drive/root/children?$filter=name eq 'Cash-flow'`,
+                    // Search in shared with me files
+                    const searchResponse = await fetch(
+                        `https://graph.microsoft.com/v1.0/me/drive/sharedWithMe?$filter=name eq 'Restaurant CF- Working 2026.xlsx'`,
                         {
                             headers: {
                                 Authorization: `Bearer ${tokenResponse.accessToken}`
@@ -117,39 +117,17 @@
                         }
                     );
 
-                    if (!folderSearchResponse.ok) {
-                        throw new Error('Failed to search for Cash-flow folder');
+                    if (!searchResponse.ok) {
+                        throw new Error('Failed to search shared files');
                     }
 
-                    const folderSearchData = await folderSearchResponse.json();
+                    const searchData = await searchResponse.json();
                     
-                    if (!folderSearchData.value || folderSearchData.value.length === 0) {
-                        throw new Error('Cash-flow folder not found');
+                    if (!searchData.value || searchData.value.length === 0) {
+                        throw new Error('Restaurant CF- Working 2026.xlsx not found in shared files');
                     }
 
-                    const folderId = folderSearchData.value[0].id;
-
-                    // Now search for the Excel file inside the folder
-                    const fileSearchResponse = await fetch(
-                        `https://graph.microsoft.com/v1.0/me/drive/items/${folderId}/children?$filter=name eq 'Restaurant CF- Working 2026.xlsx'`,
-                        {
-                            headers: {
-                                Authorization: `Bearer ${tokenResponse.accessToken}`
-                            }
-                        }
-                    );
-
-                    if (!fileSearchResponse.ok) {
-                        throw new Error('Failed to search in Cash-flow folder');
-                    }
-
-                    const fileSearchData = await fileSearchResponse.json();
-                    
-                    if (!fileSearchData.value || fileSearchData.value.length === 0) {
-                        throw new Error('Restaurant CF- Working 2026.xlsx not found in Cash-flow folder');
-                    }
-
-                    const fileItem = fileSearchData.value[0];
+                    const fileItem = searchData.value[0];
 
                     // Get file content
                     const contentResponse = await fetch(
@@ -345,4 +323,7 @@
         }
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(React.createElement(CashFl​​​​​​​​​​​​​​​​
+        root.render(React.createElement(CashFlowDashboard));
+    </script>
+</body>
+</html>
