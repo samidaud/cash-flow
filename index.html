@@ -107,9 +107,9 @@
                         account: account
                     });
 
-                    // First, list all files in the root to find the cash-flow folder
-                    const rootResponse = await fetch(
-                        'https://graph.microsoft.com/v1.0/me/drive/root/children?$filter=name eq \'cash-flow\'',
+                    // Search for the Excel file by name
+                    const searchResponse = await fetch(
+                        `https://graph.microsoft.com/v1.0/me/drive/root/children?$filter=name eq 'Restaurant CF- Working 2026.xlsx'`,
                         {
                             headers: {
                                 Authorization: `Bearer ${tokenResponse.accessToken}`
@@ -117,41 +117,17 @@
                         }
                     );
 
-                    if (!rootResponse.ok) {
-                        throw new Error('Failed to access OneDrive');
+                    if (!searchResponse.ok) {
+                        throw new Error('Failed to search for file');
                     }
 
-                    const rootData = await rootResponse.json();
-                    let folderId = null;
-
-                    if (rootData.value && rootData.value.length > 0) {
-                        folderId = rootData.value[0].id;
-                    } else {
-                        throw new Error('cash-flow folder not found');
+                    const searchData = await searchResponse.json();
+                    
+                    if (!searchData.value || searchData.value.length === 0) {
+                        throw new Error('Restaurant CF- Working 2026.xlsx file not found');
                     }
 
-                    // Now list files in the cash-flow folder
-                    const folderResponse = await fetch(
-                        `https://graph.microsoft.com/v1.0/me/drive/items/${folderId}/children`,
-                        {
-                            headers: {
-                                Authorization: `Bearer ${tokenResponse.accessToken}`
-                            }
-                        }
-                    );
-
-                    if (!folderResponse.ok) {
-                        throw new Error('Failed to list folder contents');
-                    }
-
-                    const folderData = await folderResponse.json();
-                    const fileItem = folderData.value.find(item => 
-                        item.name.includes('Restaurant CF') && (item.name.endsWith('.xlsx') || item.name.endsWith('.xls'))
-                    );
-
-                    if (!fileItem) {
-                        throw new Error('Restaurant CF Excel file not found in cash-flow folder');
-                    }
+                    const fileItem = searchData.value[0];
 
                     // Get file content
                     const contentResponse = await fetch(
