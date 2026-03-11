@@ -53,12 +53,16 @@
                     setError(null);
                     
                     const shareLink = 'https://gulfgourmet-my.sharepoint.com/:x:/g/personal/maryann_cruz_gourmetgulf_com/IQB_1Y0mHhThQrKxCFKR2zLjAVz4728Diprm3yr408fm3qo?e=nif22U';
-                    const downloadLink = shareLink.replace('?e=nif22U', '') + '?download=1';
                     
-                    const response = await fetch(downloadLink);
+                    // Use CORS proxy
+                    const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
+                    const downloadLink = shareLink.replace('?e=nif22U', '') + '?download=1';
+                    const proxiedUrl = proxyUrl + downloadLink;
+                    
+                    const response = await fetch(proxiedUrl);
                     
                     if (!response.ok) {
-                        throw new Error('Failed to fetch Excel file');
+                        throw new Error('Failed to fetch Excel file from OneDrive');
                     }
                     
                     const arrayBuffer = await response.arrayBuffer();
