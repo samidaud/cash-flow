@@ -79,7 +79,7 @@
                         setLoading(false);
                     }
                 } catch (err) {
-                    setError('Failed to initialize authentication: ' + err.message);
+                    setError('Failed to initialize: ' + err.message);
                     setLoading(false);
                 }
             };
@@ -107,9 +107,9 @@
                         account: account
                     });
 
-                    // Search in shared with me files
-                    const searchResponse = await fetch(
-                        `https://graph.microsoft.com/v1.0/me/drive/sharedWithMe?$filter=name eq 'Restaurant CF- Working 2026.xlsx'`,
+                    // Search for file in shared with me
+                    const listResponse = await fetch(
+                        'https://graph.microsoft.com/v1.0/me/drive/sharedWithMe',
                         {
                             headers: {
                                 Authorization: `Bearer ${tokenResponse.accessToken}`
@@ -117,17 +117,14 @@
                         }
                     );
 
-                    if (!searchResponse.ok) {
-                        throw new Error('Failed to search shared files');
-                    }
+                    const listData = await listResponse.json();
+                    const fileItem = listData.value.find(item => 
+                        item.name === 'Restaurant CF- Working 2026.xlsx'
+                    );
 
-                    const searchData = await searchResponse.json();
-                    
-                    if (!searchData.value || searchData.value.length === 0) {
-                        throw new Error('Restaurant CF- Working 2026.xlsx not found in shared files');
+                    if (!fileItem) {
+                        throw new Error('File not found in shared items');
                     }
-
-                    const fileItem = searchData.value[0];
 
                     // Get file content
                     const contentResponse = await fetch(
@@ -139,19 +136,12 @@
                         }
                     );
 
-                    if (!contentResponse.ok) {
-                        throw new Error('Failed to fetch file content');
-                    }
-
                     const arrayBuffer = await contentResponse.arrayBuffer();
                     const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-
-                    const sheetName = workbook.SheetNames[0];
-                    const worksheet = workbook.Sheets[sheetName];
+                    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
 
                     const extractWeekData = (startCol, endCol) => {
                         const data = {};
-
                         lineItems.forEach(item => {
                             const rowValues = [];
                             for (let col = startCol; col <= endCol; col++) {
@@ -162,21 +152,17 @@
                             }
                             data[item.row] = rowValues;
                         });
-
                         return data;
                     };
-
-                    const lastWeekData = extractWeekData(1, 5);
-                    const currentWeekData = extractWeekData(6, 10);
 
                     const parsedData = {
                         lastWeek: {
                             headers: ['YODMM', 'YOSTD', 'PXSTD', 'CULINARY', 'TOTAL'],
-                            data: lastWeekData
+                            data: extractWeekData(1, 5)
                         },
                         currentWeek: {
                             headers: ['YODMM', 'YOSTD', 'PXSTD', 'CULINARY', 'TOTAL'],
-                            data: currentWeekData
+                            data: extractWeekData(6, 10)
                         }
                     };
 
@@ -184,7 +170,6 @@
                     setLastUpdate(new Date().toLocaleTimeString());
                 } catch (err) {
                     setError('Failed to load data: ' + err.message);
-                    console.error(err);
                 } finally {
                     setLoading(false);
                 }
