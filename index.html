@@ -8,7 +8,6 @@
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <script src="https://alcdn.msauth.net/browser/2.30.0/js/msal-browser.min.js"></script>
     <style>
         .animate-spin { animation: spin 1s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
@@ -21,28 +20,11 @@
     <script>
         const { useState, useEffect } = React;
 
-        const msalConfig = {
-            auth: {
-                clientId: '0c0385dd-8b7e-4a9d-ad89-403082b8f8ce',
-                authority: 'https://login.microsoftonline.com/2ae6a277-f72a-4953-a345-df52166894f2',
-                redirectUri: 'https://cash-flow-sigma-teal.vercel.app/'
-            },
-            cache: {
-                cacheLocation: 'localStorage'
-            }
-        };
-
-        const loginRequest = {
-            scopes: ['Files.Read.All', 'User.Read', 'Sites.Read.All']
-        };
-
         function CashFlowDashboard() {
             const [data, setData] = useState(null);
-            const [loading, setLoading] = useState(true);
+            const [loading, setLoading] = useState(false);
             const [error, setError] = useState(null);
             const [lastUpdate, setLastUpdate] = useState(null);
-            const [isAuthenticated, setIsAuthenticated] = useState(false);
-            const [msalInstance, setMsalInstance] = useState(null);
 
             const lineItems = [
                 { row: 9, label: 'TOTAL REVENUE', bold: true },
@@ -62,69 +44,24 @@
             ];
 
             useEffect(() => {
-                initializeMsal();
+                fetchExcelData();
             }, []);
 
-            const initializeMsal = async () => {
-                try {
-                    const instance = new msal.PublicClientApplication(msalConfig);
-                    await instance.initialize();
-                    setMsalInstance(instance);
-
-                    const accounts = instance.getAllAccounts();
-                    if (accounts.length > 0) {
-                        setIsAuthenticated(true);
-                        fetchExcelData(instance, accounts[0]);
-                    } else {
-                        setLoading(false);
-                    }
-                } catch (err) {
-                    setError('Failed to initialize: ' + err.message);
-                    setLoading(false);
-                }
-            };
-
-            const handleLogin = async () => {
-                try {
-                    await msalInstance.loginPopup(loginRequest);
-                    const accounts = msalInstance.getAllAccounts();
-                    if (accounts.length > 0) {
-                        setIsAuthenticated(true);
-                        fetchExcelData(msalInstance, accounts[0]);
-                    }
-                } catch (err) {
-                    setError('Login failed: ' + err.message);
-                }
-            };
-
-            const fetchExcelData = async (instance, account) => {
+            const fetchExcelData = async () => {
                 try {
                     setLoading(true);
                     setError(null);
 
-                    const tokenResponse = await instance.acquireTokenSilent({
-                        ...loginRequest,
-                        account: account
-                    });
+                    // Direct SharePoint download URL
+                    const sharePointUrl = 'https://gulfgourmet.sharepoint.com/:x:/s/cash-flow/IQDNM7xsDn-PTJxOJigOAuSKAVIIJAEdZ-I0tcZO4aR0lhc?download=1';
 
-                    // SharePoint file ID from the link
-                    const siteId = 'gulfgourmet.sharepoint.com,4f4a0df2-7b8c-4e5a-b3d4-8f9c2e5a1b3c,7a8b9c0d-1e2f-4g5h-6i7j-8k9l0m1n2o3p';
-                    const fileId = 'IQDNM7xsDn-PTJxOJigOAuSKAVIIJAEdZ-I0tcZO4aR0lhc';
-
-                    const contentResponse = await fetch(
-                        `https://graph.microsoft.com/v1.0/sites/${siteId}/drive/items/${fileId}/content`,
-                        {
-                            headers: {
-                                Authorization: `Bearer ${tokenResponse.accessToken}`
-                            }
-                        }
-                    );
-
-                    if (!contentResponse.ok) {
-                        throw new Error('Failed to fetch file: ' + contentResponse.status);
+                    const response = await fetch(sharePointUrl);
+                    
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch file from SharePoint');
                     }
 
-                    const arrayBuffer = await contentResponse.arrayBuffer();
+                    const arrayBuffer = await response.arrayBuffer();
                     const workbook = XLSX.read(arrayBuffer, { type: 'array' });
                     const worksheet = workbook.Sheets[workbook.SheetNames[0]];
 
@@ -163,12 +100,6 @@
                 }
             };
 
-            const handleLogout = () => {
-                msalInstance.logout();
-                setIsAuthenticated(false);
-                setData(null);
-            };
-
             const formatNumber = (value, percent = false) => {
                 if (value === null || value === undefined) return '—';
                 if (percent) return (value * 100).toFixed(1) + '%';
@@ -180,23 +111,7 @@
                 }).format(value);
             };
 
-            if (!isAuthenticated) {
-                return React.createElement('div', { className: 'min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4' },
-                    React.createElement('div', { className: 'bg-white rounded-lg shadow-xl p-8 max-w-md w-full' },
-                        React.createElement('h1', { className: 'text-3xl font-bold text-slate-900 mb-2' }, 'Cash Flow Dashboard'),
-                        React.createElement('p', { className: 'text-slate-600 mb-6' }, 'View your live restaurant cash flow data'),
-                        React.createElement('button', {
-                            onClick: handleLogin,
-                            className: 'w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition-colors mb-4'
-                        }, 'Sign in with Microsoft'),
-                        React.createElement('p', { className: 'text-xs text-slate-500 text-center' },
-                            'Sign in to access your cash flow data'
-                        )
-                    )
-                );
-            }
-
-            if (loading) {
+            if (loading && !data) {
                 return React.createElement('div', { className: 'min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center' },
                     React.createElement('div', { className: 'text-center' },
                         React.createElement('div', { className: 'w-8 h-8 text-blue-400 animate-spin mx-auto mb-4 inline-block border-4 border-blue-400 border-t-transparent rounded-full' }),
@@ -210,18 +125,13 @@
                     React.createElement('div', { className: 'flex justify-between items-center mb-8' },
                         React.createElement('div', null,
                             React.createElement('h1', { className: 'text-4xl font-bold text-white mb-1' }, 'Cash Flow Dashboard'),
-                            React.createElement('p', { className: 'text-slate-400' }, 'Last updated: ' + lastUpdate)
+                            React.createElement('p', { className: 'text-slate-400' }, 'Last updated: ' + (lastUpdate || 'never'))
                         ),
-                        React.createElement('div', { className: 'flex gap-3' },
-                            React.createElement('button', {
-                                onClick: () => fetchExcelData(msalInstance, msalInstance.getAllAccounts()[0]),
-                                className: 'bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg'
-                            }, '⟳ Refresh'),
-                            React.createElement('button', {
-                                onClick: handleLogout,
-                                className: 'bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg'
-                            }, '→ Logout')
-                        )
+                        React.createElement('button', {
+                            onClick: fetchExcelData,
+                            disabled: loading,
+                            className: 'bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg'
+                        }, loading ? 'Loading...' : '⟳ Refresh')
                     ),
 
                     error && React.createElement('div', { className: 'bg-red-900/50 border border-red-500 rounded-lg p-4 mb-6 text-red-200' }, error),
