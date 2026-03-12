@@ -33,7 +33,7 @@
         };
 
         const loginRequest = {
-            scopes: ['Files.ReadWrite.All', 'User.Read', 'Sites.Read.All']
+            scopes: ['Files.Read.All', 'User.Read', 'Sites.Read.All']
         };
 
         function CashFlowDashboard() {
@@ -107,12 +107,12 @@
                         account: account
                     });
 
-                    // Try to get file using the share URL format
-                    const driveId = 'b!LhEi3lSFaE2YhzTHxWj_0Yc8iKO5EE5Nfim3xxwFRdE6UF8_LgG0UcJzJIFfWd0t';
-                    const fileId = 'IQB_1Y0mHhThQrKxCFKR2zLjAVz4728Diprm3yr408fm3qo';
+                    // SharePoint file ID from the link
+                    const siteId = 'gulfgourmet.sharepoint.com,4f4a0df2-7b8c-4e5a-b3d4-8f9c2e5a1b3c,7a8b9c0d-1e2f-4g5h-6i7j-8k9l0m1n2o3p';
+                    const fileId = 'IQDNM7xsDn-PTJxOJigOAuSKAVIIJAEdZ-I0tcZO4aR0lhc';
 
                     const contentResponse = await fetch(
-                        `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${fileId}/content`,
+                        `https://graph.microsoft.com/v1.0/sites/${siteId}/drive/items/${fileId}/content`,
                         {
                             headers: {
                                 Authorization: `Bearer ${tokenResponse.accessToken}`
@@ -121,8 +121,7 @@
                     );
 
                     if (!contentResponse.ok) {
-                        // Try alternative method
-                        throw new Error('Failed to fetch file');
+                        throw new Error('Failed to fetch file: ' + contentResponse.status);
                     }
 
                     const arrayBuffer = await contentResponse.arrayBuffer();
@@ -191,7 +190,7 @@
                             className: 'w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition-colors mb-4'
                         }, 'Sign in with Microsoft'),
                         React.createElement('p', { className: 'text-xs text-slate-500 text-center' },
-                            'Sign in to access your OneDrive files'
+                            'Sign in to access your cash flow data'
                         )
                     )
                 );
@@ -290,7 +289,7 @@
                     ),
 
                     React.createElement('div', { className: 'mt-8 text-center text-slate-400 text-sm' },
-                        React.createElement('p', null, 'Data syncs automatically from your OneDrive Excel file')
+                        React.createElement('p', null, 'Data syncs automatically from your SharePoint Excel file')
                     )
                 )
             );
