@@ -107,34 +107,21 @@
                         account: account
                     });
 
-                    // Search for file in shared with me
-                    const listResponse = await fetch(
-                        'https://graph.microsoft.com/v1.0/me/drive/sharedWithMe',
-                        {
-                            headers: {
-                                Authorization: `Bearer ${tokenResponse.accessToken}`
-                            }
-                        }
-                    );
+                    // Use direct file ID from share link
+                    const fileId = 'IQB_1Y0mHhThQrKxCFKR2zLjAVz4728Diprm3yr408fm3qo';
 
-                    const listData = await listResponse.json();
-                    const fileItem = listData.value.find(item => 
-                        item.name === 'Restaurant CF- Working 2026.xlsx'
-                    );
-
-                    if (!fileItem) {
-                        throw new Error('File not found in shared items');
-                    }
-
-                    // Get file content
                     const contentResponse = await fetch(
-                        `https://graph.microsoft.com/v1.0/me/drive/items/${fileItem.id}/content`,
+                        `https://graph.microsoft.com/v1.0/drive/items/${fileId}/content`,
                         {
                             headers: {
                                 Authorization: `Bearer ${tokenResponse.accessToken}`
                             }
                         }
                     );
+
+                    if (!contentResponse.ok) {
+                        throw new Error('Failed to fetch file: ' + contentResponse.status);
+                    }
 
                     const arrayBuffer = await contentResponse.arrayBuffer();
                     const workbook = XLSX.read(arrayBuffer, { type: 'array' });
