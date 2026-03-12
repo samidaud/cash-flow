@@ -33,7 +33,7 @@
         };
 
         const loginRequest = {
-            scopes: ['Files.Read.All', 'User.Read']
+            scopes: ['Files.ReadWrite.All', 'User.Read', 'Sites.Read.All']
         };
 
         function CashFlowDashboard() {
@@ -107,11 +107,12 @@
                         account: account
                     });
 
-                    // Use direct file ID from share link
+                    // Try to get file using the share URL format
+                    const driveId = 'b!LhEi3lSFaE2YhzTHxWj_0Yc8iKO5EE5Nfim3xxwFRdE6UF8_LgG0UcJzJIFfWd0t';
                     const fileId = 'IQB_1Y0mHhThQrKxCFKR2zLjAVz4728Diprm3yr408fm3qo';
 
                     const contentResponse = await fetch(
-                        `https://graph.microsoft.com/v1.0/drive/items/${fileId}/content`,
+                        `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${fileId}/content`,
                         {
                             headers: {
                                 Authorization: `Bearer ${tokenResponse.accessToken}`
@@ -120,7 +121,8 @@
                     );
 
                     if (!contentResponse.ok) {
-                        throw new Error('Failed to fetch file: ' + contentResponse.status);
+                        // Try alternative method
+                        throw new Error('Failed to fetch file');
                     }
 
                     const arrayBuffer = await contentResponse.arrayBuffer();
